@@ -1,0 +1,10 @@
+{
+  "generator": "sol-transactions",
+  "state": {
+    "name": "raydium_eco_farms",
+    "chainName": "",
+    "initialBlock": 323484051,
+    "initialBlockSet": true,
+    "filter": "program:FarmqiPv5eAj3j1GMdMCMUGXqPUvmquZtMy86QH6rzhG"
+  }
+}

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package raydium_eco_farms;
+
+message RaydiumEcoFarmTransactions {
+  repeated RaydiumFarmTransaction transactions = 1;
+}
+
+
+message RaydiumFarmTransaction {
+  oneof event {
+    InitializeTransaction initialize = 1;
+    RestartOrAddTransaction restart_or_add = 2;
+    NewRewardTransaction new_reward = 3;
+      // DepositEvent deposit = 2;
+      // WithdrawEvent withdraw = 3;
+      // WithdrawPnlEvent withdraw_pnl = 4;
+      // SwapEvent swap = 5;
+  }
+}
+
+message InitializeTransaction {
+  string signature = 1;
+  string farm_id = 2;
+  string user = 3;
+  string lp_mint = 4;
+  repeated string reward_mints = 5;
+  uint32 start_time = 6;
+  uint32 end_time = 7;
+}
+
+message RestartOrAddTransaction {
+  string signature = 1;
+  string farm_id = 2;
+  string user = 3;
+  uint32 start_time = 4;
+  uint32 end_time = 5;
+}
+
+message NewRewardTransaction {
+  string signature = 1;
+  string farm_id = 2;
+  string user = 3;
+  uint32 start_time = 4;
+  uint32 end_time = 5;
+}

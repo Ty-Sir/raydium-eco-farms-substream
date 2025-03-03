@@ -1,0 +1,53 @@
+specVersion: v0.1.0
+package:
+  name: raydium_eco_farms
+  version: v0.1.0
+  description: "Raydium Ecosystem Farm Transactions: Minimal substream to track active farms from start and end times."
+  image: ./raydium.png
+  url: "https://github.com/Ty-Sir/raydium-eco-farms-substream"
+
+imports:
+  solana: https://spkg.io/streamingfast/solana-common-v0.3.3.spkg
+
+protobuf:
+  files:
+    - raydium_eco_farms.proto
+  importPaths:
+    - ./proto
+  excludePaths:
+    - sf/substreams/rpc
+    - sf/substreams/v1
+    - sf/substreams/sink
+    - sf/substreams/index
+    - sf/substreams/index/v1
+    - instructions.proto # sol.instructions.v1 from the v0.2.0 spkg
+    - transactions.proto # sol.transactions.v1 from the v0.2.0 spkg
+    - google
+
+binaries:
+  default:
+    type: wasm/rust-v1+wasm-bindgen-shims
+    file: ./target/wasm32-unknown-unknown/release/substreams.wasm
+
+modules:
+  - name: map_filtered_transactions
+    use: solana:transactions_by_programid_without_votes
+    # initialBlock: 323484051 # - restart single reward
+    # initialBlock: 323728974 # - restart two rewards
+    # initialBlock: 315493942 # - create farm
+    # initialBlock: 316363856 # - deposit into farm (one person) -- not needed b/c we just need to get current active farms, if we want tvl we can add this in
+    # initialBlock: 323530883 # - add single reward to existing farm - does the same as restart
+    initialBlock: 323531195 # - add single new reward to existing farm
+    # initialBlock: 316270499 # - withdraw from farm  -- not needed b/c we just need to get current active farms, if we want tvl we can add this in
+  
+  - name: map_farm_txns
+    kind: map
+    inputs:
+    - map: map_filtered_transactions
+    output:
+     type: proto:raydium_eco_farms.RaydiumEcoFarmTransactions
+
+network: solana-mainnet-beta
+
+params:
+  map_filtered_transactions: program:FarmqiPv5eAj3j1GMdMCMUGXqPUvmquZtMy86QH6rzhG

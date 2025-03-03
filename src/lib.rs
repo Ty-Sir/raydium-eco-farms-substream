@@ -13,7 +13,7 @@ use substreams::log::println;
 const FARM_PROGRAM_ID: &str = "FarmqiPv5eAj3j1GMdMCMUGXqPUvmquZtMy86QH6rzhG";
 
 #[substreams::handlers::map]
-fn map_farm_txns(transactions: Transactions) -> RaydiumEcoFarmTransactions {
+fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTransactions>, String> {
     let mut farm_transactions = RaydiumEcoFarmTransactions::default();
 
     for txn in transactions.transactions.iter() {
@@ -60,8 +60,11 @@ fn map_farm_txns(transactions: Transactions) -> RaydiumEcoFarmTransactions {
             });
         }
     }
+    if farm_transactions.transactions.len() == 0 {
+        return Ok(None); // Early return with None
+    }
 
-    farm_transactions
+    Ok(Some(farm_transactions))
 }
 
 pub fn process_initialize(

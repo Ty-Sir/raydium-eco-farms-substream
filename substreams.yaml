@@ -37,8 +37,9 @@ modules:
     # initialBlock: 315493942 # - create farm
     # initialBlock: 316363856 # - deposit into farm (one person) -- not needed b/c we just need to get current active farms, if we want tvl we can add this in
     # initialBlock: 323530883 # - add single reward to existing farm - does the same as restart
-    initialBlock: 323531195 # - add single new reward to existing farm
+    # initialBlock: 323531195 # - add single new reward to existing farm
     # initialBlock: 316270499 # - withdraw from farm  -- not needed b/c we just need to get current active farms, if we want tvl we can add this in
+    initialBlock: 265495360 # - start of farm program
   
   - name: map_farm_txns
     kind: map

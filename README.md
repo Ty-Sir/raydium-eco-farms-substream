@@ -1,6 +1,8 @@
 # raydium_eco_farms Substreams modules
 
-This package was initialized via `substreams init`, using the `sol-minimal` template.
+Raydium Ecosystem Farm Transactions: Minimal substream to track active farms from start and end times.
+
+This package was initialized via `substreams init`, using the `sol-transactions` template.
 
 ## Usage
 

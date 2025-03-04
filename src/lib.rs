@@ -116,9 +116,6 @@ pub fn process_initialize(
     ));
     let user = accounts.get(0);
     let farm_id = accounts.get(1);
-    let _farm_program_id_index = accounts
-        .iter()
-        .position(|account| account.contains(FARM_PROGRAM_ID));
     let lp_mint = accounts.get(*index_of_lp_mint as usize);
 
     println(format!(

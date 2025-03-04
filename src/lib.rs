@@ -1,4 +1,4 @@
-mod pb;
+pub mod pb;
 
 use pb::{
     raydium_eco_farms::{

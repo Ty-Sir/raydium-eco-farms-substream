@@ -12,10 +12,6 @@ message RaydiumFarmTransaction {
     InitializeTransaction initialize = 1;
     RestartOrAddTransaction restart_or_add = 2;
     NewRewardTransaction new_reward = 3;
-      // DepositEvent deposit = 2;
-      // WithdrawEvent withdraw = 3;
-      // WithdrawPnlEvent withdraw_pnl = 4;
-      // SwapEvent swap = 5;
   }
 }
 
@@ -24,9 +20,8 @@ message InitializeTransaction {
   string farm_id = 2;
   string user = 3;
   string lp_mint = 4;
-  repeated string reward_mints = 5;
-  uint32 start_time = 6;
-  uint32 end_time = 7;
+  uint32 start_time = 5;
+  uint32 end_time = 6;
 }
 
 message RestartOrAddTransaction {

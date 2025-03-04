@@ -92,15 +92,14 @@ pub fn process_initialize(
     ));
     let user = accounts.get(0);
     let farm_id = accounts.get(1);
-    let lp_mint = accounts.get((accounts.len() - 1) - process_initialize_logs.len());
-    let reward_mints = accounts
+    let farm_program_id_index = accounts
         .iter()
-        .skip(accounts.len() - process_initialize_logs.len())
-        .collect::<Vec<&String>>();
+        .position(|account| account.contains(FARM_PROGRAM_ID));
+    let lp_mint = accounts.get(farm_program_id_index.unwrap() + 2);
 
     println(format!(
-        "user: {:?}, farm_id: {:?}, lp_mint: {:?}, reward_mints: {:?}",
-        user, farm_id, lp_mint, reward_mints
+        "user: {:?}, farm_id: {:?}, lp_mint: {:?}",
+        user, farm_id, lp_mint
     ));
 
     // Finding the earliest start time
@@ -138,7 +137,6 @@ pub fn process_initialize(
         farm_id: farm_id.unwrap().to_string(),
         user: user.unwrap().to_string(),
         lp_mint: lp_mint.unwrap().to_string(),
-        reward_mints: reward_mints.iter().map(|x| x.to_string()).collect(),
         start_time,
         end_time,
     }))

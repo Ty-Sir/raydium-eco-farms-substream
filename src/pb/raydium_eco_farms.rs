@@ -21,10 +21,6 @@ pub mod raydium_farm_transaction {
         Initialize(super::InitializeTransaction),
         #[prost(message, tag="2")]
         RestartOrAdd(super::RestartOrAddTransaction),
-        /// DepositEvent deposit = 2;
-        /// WithdrawEvent withdraw = 3;
-        /// WithdrawPnlEvent withdraw_pnl = 4;
-        /// SwapEvent swap = 5;
         #[prost(message, tag="3")]
         NewReward(super::NewRewardTransaction),
     }
@@ -40,11 +36,9 @@ pub struct InitializeTransaction {
     pub user: ::prost::alloc::string::String,
     #[prost(string, tag="4")]
     pub lp_mint: ::prost::alloc::string::String,
-    #[prost(string, repeated, tag="5")]
-    pub reward_mints: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(uint32, tag="6")]
+    #[prost(uint32, tag="5")]
     pub start_time: u32,
-    #[prost(uint32, tag="7")]
+    #[prost(uint32, tag="6")]
     pub end_time: u32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]

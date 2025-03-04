@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: raydium_eco_farms
-  version: v0.1.0
+  version: v0.1.1
   description: "Raydium Ecosystem Farm Transactions: Minimal substream to track active farms from start and end times."
   image: ./raydium.png
   url: "https://github.com/Ty-Sir/raydium-eco-farms-substream"

@@ -5,7 +5,7 @@ use pb::{
         raydium_farm_transaction::Event, InitializeTransaction, NewRewardTransaction,
         RaydiumEcoFarmTransactions, RaydiumFarmTransaction, RestartOrAddTransaction,
     },
-    sf::{solana::r#type::v1::CompiledInstruction, substreams::solana::v1::Transactions},
+    sf::substreams::solana::v1::Transactions,
 };
 
 use substreams::log::println;
@@ -49,8 +49,24 @@ fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTran
 
         println(format!("accounts: {:?}", accounts));
 
+        let farm_program_index = accounts
+            .iter()
+            .position(|account| account.contains(FARM_PROGRAM_ID))
+            .ok_or("Farm program ID not found in accounts")?;
+
+        let create_instruction = compiled_instructions
+            .iter()
+            .find(|i| i.program_id_index == farm_program_index as u32)
+            .ok_or("Create instruction not found")?;
+
+        // Handle the case where the index doesn't exist
+        let index_of_lp_mint = create_instruction
+            .accounts
+            .get(6)
+            .ok_or("Index of LP mint not found")?;
+
         let initialize_result =
-            process_initialize(&log_messages, &signature, &accounts, &compiled_instructions);
+            process_initialize(&log_messages, &signature, &accounts, index_of_lp_mint);
         if let Ok(Some(initialize_txn)) = initialize_result {
             farm_transactions.transactions.push(RaydiumFarmTransaction {
                 event: Some(Event::Initialize(initialize_txn)),
@@ -80,7 +96,7 @@ pub fn process_initialize(
     log_messages: &Vec<String>,
     signature: &String,
     accounts: &Vec<String>,
-    compiled_instructions: &Vec<CompiledInstruction>,
+    index_of_lp_mint: &u8,
 ) -> Result<Option<InitializeTransaction>, String> {
     //check if farm program id is in the logs
     let init_farm = log_messages.iter().any(|log| log.contains(FARM_PROGRAM_ID));
@@ -95,20 +111,9 @@ pub fn process_initialize(
         return Ok(None); // Early return with None
     }
 
-    let farm_program_index = accounts
-        .iter()
-        .position(|account| account.contains(FARM_PROGRAM_ID))
-        .unwrap();
-    println(format!("farm_program_index: {:?}", farm_program_index));
-
-    let create_instruction = compiled_instructions
-        .iter()
-        .find(|i| i.program_id_index == farm_program_index as u32)
-        .unwrap();
-
-    println(format!("create_instruction: {:?}", create_instruction));
-    let index_of_lp_mint = create_instruction.accounts.get(6).unwrap();
-    println(format!("index_of_lp_mint: {:?}", index_of_lp_mint));
+    let lp_mint = accounts
+        .get(*index_of_lp_mint as usize)
+        .ok_or("LP mint account not found")?;
 
     println(format!(
         "process_initialize_logs: {:?}",
@@ -116,7 +121,6 @@ pub fn process_initialize(
     ));
     let user = accounts.get(0);
     let farm_id = accounts.get(1);
-    let lp_mint = accounts.get(*index_of_lp_mint as usize);
 
     println(format!(
         "user: {:?}, farm_id: {:?}, lp_mint: {:?}",
@@ -157,7 +161,7 @@ pub fn process_initialize(
         signature: signature.to_string(),
         farm_id: farm_id.unwrap().to_string(),
         user: user.unwrap().to_string(),
-        lp_mint: lp_mint.unwrap().to_string(),
+        lp_mint: lp_mint.to_string(),
         start_time,
         end_time,
     }))

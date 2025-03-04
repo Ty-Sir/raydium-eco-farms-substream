@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: raydium_eco_farms
-  version: v0.1.1
+  version: v0.1.2
   description: "Raydium Ecosystem Farm Transactions: Minimal substream to track active farms from start and end times."
   image: ./raydium.png
   url: "https://github.com/Ty-Sir/raydium-eco-farms-substream"
@@ -40,10 +40,11 @@ modules:
     # initialBlock: 323531195 # - add single new reward to existing farm
     # initialBlock: 316270499 # - withdraw from farm  -- not needed b/c we just need to get current active farms, if we want tvl we can add this in
     initialBlock: 265495360 # - start of farm program
-    # initialBlock: 323303711 # - init txn - doesnt work for lp mint grab  - farmIndex + 2 is lpMint
-    # initialBlock: 315480438 # - init txn - works for lp mint grab   - farmIndex + 2 is lpMint
-    # initialBlock: 318950548 # - init txn - works for lp mint grab - farmIndex + 2 is lpMint
-    # initialBlock: 315675457 # - init txn - doesnt work for lp mint grab  - farmIndex + 2 is lpMint
+    # initialBlock: 323303711 # - init txn - doesnt work for lp mint grab 
+    # initialBlock: 315480438 # - init txn - works for lp mint grab  
+    # initialBlock: 318950548 # - init txn - works for lp mint grab
+    # initialBlock: 315675457 # - init txn - doesnt work for lp mint grab
+    # initialBlock: 323356841 # - init txn
   
   - name: map_farm_txns
     kind: map

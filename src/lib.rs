@@ -1,9 +1,11 @@
 mod pb;
+
 use pb::{
-    raydium_eco_farms::raydium_farm_transaction::Event, raydium_eco_farms::InitializeTransaction,
-    raydium_eco_farms::NewRewardTransaction, raydium_eco_farms::RaydiumEcoFarmTransactions,
-    raydium_eco_farms::RaydiumFarmTransaction, raydium_eco_farms::RestartOrAddTransaction,
-    sf::substreams::solana::v1::Transactions,
+    raydium_eco_farms::{
+        raydium_farm_transaction::Event, InitializeTransaction, NewRewardTransaction,
+        RaydiumEcoFarmTransactions, RaydiumFarmTransaction, RestartOrAddTransaction,
+    },
+    sf::{solana::r#type::v1::CompiledInstruction, substreams::solana::v1::Transactions},
 };
 
 use substreams::log::println;
@@ -21,6 +23,8 @@ fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTran
         let txn_wrapped = &txn.transaction;
         let transaction = txn_wrapped.as_ref().unwrap();
 
+        let message = transaction.message.as_ref().unwrap();
+
         let log_messages = &meta.log_messages;
 
         log_messages.iter().for_each(|log| {
@@ -28,21 +32,25 @@ fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTran
         });
 
         let signature = bs58::encode(transaction.signatures.get(0).unwrap()).into_string();
-
         println(format!("signature: {:?}", signature));
 
+        let compiled_instructions = &transaction.message.as_ref().unwrap().instructions;
+
+        let mut all_accounts = vec![];
+        all_accounts.extend(message.account_keys.iter());
+        all_accounts.extend(meta.loaded_writable_addresses.iter());
+        all_accounts.extend(meta.loaded_readonly_addresses.iter());
+
         //get all accounts in base58
-        let accounts = transaction
-            .message
-            .as_ref()
-            .unwrap()
-            .account_keys
+        let accounts = all_accounts
             .iter()
             .map(|account| bs58::encode(account).into_string())
             .collect::<Vec<String>>();
 
         println(format!("accounts: {:?}", accounts));
-        let initialize_result = process_initialize(&log_messages, &signature, &accounts);
+
+        let initialize_result =
+            process_initialize(&log_messages, &signature, &accounts, &compiled_instructions);
         if let Ok(Some(initialize_txn)) = initialize_result {
             farm_transactions.transactions.push(RaydiumFarmTransaction {
                 event: Some(Event::Initialize(initialize_txn)),
@@ -72,6 +80,7 @@ pub fn process_initialize(
     log_messages: &Vec<String>,
     signature: &String,
     accounts: &Vec<String>,
+    compiled_instructions: &Vec<CompiledInstruction>,
 ) -> Result<Option<InitializeTransaction>, String> {
     //check if farm program id is in the logs
     let init_farm = log_messages.iter().any(|log| log.contains(FARM_PROGRAM_ID));
@@ -86,16 +95,31 @@ pub fn process_initialize(
         return Ok(None); // Early return with None
     }
 
+    let farm_program_index = accounts
+        .iter()
+        .position(|account| account.contains(FARM_PROGRAM_ID))
+        .unwrap();
+    println(format!("farm_program_index: {:?}", farm_program_index));
+
+    let create_instruction = compiled_instructions
+        .iter()
+        .find(|i| i.program_id_index == farm_program_index as u32)
+        .unwrap();
+
+    println(format!("create_instruction: {:?}", create_instruction));
+    let index_of_lp_mint = create_instruction.accounts.get(6).unwrap();
+    println(format!("index_of_lp_mint: {:?}", index_of_lp_mint));
+
     println(format!(
         "process_initialize_logs: {:?}",
         process_initialize_logs
     ));
     let user = accounts.get(0);
     let farm_id = accounts.get(1);
-    let farm_program_id_index = accounts
+    let _farm_program_id_index = accounts
         .iter()
         .position(|account| account.contains(FARM_PROGRAM_ID));
-    let lp_mint = accounts.get(farm_program_id_index.unwrap() + 2);
+    let lp_mint = accounts.get(*index_of_lp_mint as usize);
 
     println(format!(
         "user: {:?}, farm_id: {:?}, lp_mint: {:?}",

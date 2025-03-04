@@ -6,8 +6,6 @@ use pb::{
     sf::substreams::solana::v1::Transactions,
 };
 
-use sologger_log_context::programs_selector::ProgramsSelector;
-use sologger_log_context::sologger_log_context::LogContext;
 use substreams::log::println;
 
 const FARM_PROGRAM_ID: &str = "FarmqiPv5eAj3j1GMdMCMUGXqPUvmquZtMy86QH6rzhG";
@@ -23,8 +21,11 @@ fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTran
         let txn_wrapped = &txn.transaction;
         let transaction = txn_wrapped.as_ref().unwrap();
 
-        let programs_selector: ProgramsSelector = ProgramsSelector::new(&["*".to_string()]);
-        let log_contexts = LogContext::parse_logs_basic(&meta.log_messages, &programs_selector);
+        let log_messages = &meta.log_messages;
+
+        log_messages.iter().for_each(|log| {
+            println(format!("log: {:?}", log));
+        });
 
         let signature = bs58::encode(transaction.signatures.get(0).unwrap()).into_string();
 
@@ -40,20 +41,20 @@ fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTran
             .map(|account| bs58::encode(account).into_string())
             .collect::<Vec<String>>();
 
-        // println(format!("accounts: {:?}", accounts));
-        let initialize_result = process_initialize(&log_contexts, &signature, &accounts);
+        println(format!("accounts: {:?}", accounts));
+        let initialize_result = process_initialize(&log_messages, &signature, &accounts);
         if let Ok(Some(initialize_txn)) = initialize_result {
             farm_transactions.transactions.push(RaydiumFarmTransaction {
                 event: Some(Event::Initialize(initialize_txn)),
             });
         }
-        let restart_or_add_result = process_restart_or_add(&log_contexts, &signature, &accounts);
+        let restart_or_add_result = process_restart_or_add(&log_messages, &signature, &accounts);
         if let Ok(Some(restart_or_add_txn)) = restart_or_add_result {
             farm_transactions.transactions.push(RaydiumFarmTransaction {
                 event: Some(Event::RestartOrAdd(restart_or_add_txn)),
             });
         }
-        let new_reward_result = process_new_reward(&log_contexts, &signature, &accounts);
+        let new_reward_result = process_new_reward(&log_messages, &signature, &accounts);
         if let Ok(Some(new_reward_txn)) = new_reward_result {
             farm_transactions.transactions.push(RaydiumFarmTransaction {
                 event: Some(Event::NewReward(new_reward_txn)),
@@ -68,30 +69,27 @@ fn map_farm_txns(transactions: Transactions) -> Result<Option<RaydiumEcoFarmTran
 }
 
 pub fn process_initialize(
-    log_contexts: &Vec<LogContext>,
+    log_messages: &Vec<String>,
     signature: &String,
     accounts: &Vec<String>,
 ) -> Result<Option<InitializeTransaction>, String> {
-    let process_initialize_logs = log_contexts
+    //check if farm program id is in the logs
+    let init_farm = log_messages.iter().any(|log| log.contains(FARM_PROGRAM_ID));
+    if !init_farm {
+        return Ok(None); // Early return with None
+    }
+    let process_initialize_logs = &log_messages
         .iter()
-        .filter(|context| context.program_id == FARM_PROGRAM_ID)
-        .flat_map(|context| {
-            context
-                .log_messages
-                .iter()
-                .filter(|log| log.contains("process_initialize reward_per_second"))
-                .map(|_| context)
-                .collect::<Vec<&LogContext>>()
-        })
-        .collect::<Vec<&LogContext>>();
+        .filter(|log| log.contains("process_initialize reward_per_second"))
+        .collect::<Vec<&String>>();
     if process_initialize_logs.is_empty() {
         return Ok(None); // Early return with None
     }
 
-    // println(format!(
-    //     "process_initialize_logs: {:?}",
-    //     process_initialize_logs.get(0)
-    // ));
+    println(format!(
+        "process_initialize_logs: {:?}",
+        process_initialize_logs
+    ));
     let user = accounts.get(0);
     let farm_id = accounts.get(1);
     let lp_mint = accounts.get((accounts.len() - 1) - process_initialize_logs.len());
@@ -105,10 +103,9 @@ pub fn process_initialize(
         user, farm_id, lp_mint, reward_mints
     ));
 
-    let log_messages = &process_initialize_logs.get(0).unwrap().log_messages;
     // Finding the earliest start time
     let mut start_time: u32 = 0;
-    for message in log_messages {
+    for message in process_initialize_logs {
         if let Some(split) = message.split("begin:").nth(1) {
             if let Some(temp_start_time) =
                 split.split(",").next().and_then(|s| s.parse::<u32>().ok())
@@ -126,7 +123,7 @@ pub fn process_initialize(
 
     // Finding the latest end time
     let mut end_time: u32 = 0;
-    for message in log_messages {
+    for message in process_initialize_logs {
         if let Some(split) = message.split("end:").nth(1) {
             if let Some(temp_end_time) = split.split(",").next().and_then(|s| s.parse::<u32>().ok())
             {
@@ -148,34 +145,22 @@ pub fn process_initialize(
 }
 
 pub fn process_restart_or_add(
-    log_contexts: &Vec<LogContext>,
+    log_messages: &Vec<String>,
     signature: &String,
     accounts: &Vec<String>,
 ) -> Result<Option<RestartOrAddTransaction>, String> {
-    let process_restart_logs = log_contexts
+    let restart_or_add_farm = log_messages.iter().any(|log| log.contains(FARM_PROGRAM_ID));
+    if !restart_or_add_farm {
+        return Ok(None); // Early return with None
+    }
+    let reward_messages = &log_messages
         .iter()
-        .filter(|context| context.program_id == FARM_PROGRAM_ID)
-        .flat_map(|context| {
-            context
-                .log_messages
-                .iter()
-                .filter(|log| log.contains("process_creator_restart"))
-                .map(|_| context)
-                .collect::<Vec<&LogContext>>()
-        })
-        .collect::<Vec<&LogContext>>();
-    let reward_messages = process_restart_logs
-        .iter()
-        .flat_map(|context| {
-            context
-                .log_messages
-                .iter()
-                .filter(|log| log.contains("process_creator_restart"))
-        })
+        .filter(|log| log.contains("process_creator_restart"))
         .collect::<Vec<&String>>();
     if reward_messages.is_empty() {
         return Ok(None); // Early return with None
     }
+
     let user = accounts.get(0);
     let farm_id = accounts.get(1);
     // could get rewards tokens from messages, but are only given the token account not the mint address
@@ -185,7 +170,6 @@ pub fn process_restart_or_add(
     // println(format!("user: {:?}, farm_id: {:?}", user, farm_id));
     // println(format!("accounts: {:?}", accounts));
 
-    let log_messages = &reward_messages;
     //["process_creator_restart: EVfHjrgu9KFV4889AdyBNtB7jgBhAaPZeSAJ9sY163vD,
     // 1740777211,
     // 1741382011, 16", "process_creator_restart: DpiGX6UpwH7pz9YKka2t6zyWFfBQyiq4ihCy7nzGciEh, 1740777232, 1741382
@@ -193,7 +177,7 @@ pub fn process_restart_or_add(
 
     // // Finding the earliest start time
     let mut start_time: u32 = 0;
-    for message in log_messages {
+    for message in reward_messages {
         if let Some(split) = message.split("process_creator_restart: ").nth(1) {
             if let Some(temp_start_time) =
                 split.split(", ").nth(1).and_then(|s| s.parse::<u32>().ok())
@@ -209,7 +193,7 @@ pub fn process_restart_or_add(
 
     // // Finding the latest end time
     let mut end_time: u32 = 0;
-    for message in log_messages {
+    for message in reward_messages {
         if let Some(split) = message.split("process_creator_restart: ").nth(1) {
             if let Some(temp_end_time) =
                 split.split(", ").nth(2).and_then(|s| s.parse::<u32>().ok())
@@ -229,30 +213,17 @@ pub fn process_restart_or_add(
 }
 
 pub fn process_new_reward(
-    log_contexts: &Vec<LogContext>,
+    log_messages: &Vec<String>,
     signature: &String,
     accounts: &Vec<String>,
 ) -> Result<Option<NewRewardTransaction>, String> {
-    let process_new_reward_logs = log_contexts
+    let new_reward_farm = log_messages.iter().any(|log| log.contains(FARM_PROGRAM_ID));
+    if !new_reward_farm {
+        return Ok(None); // Early return with None
+    }
+    let reward_messages = &log_messages
         .iter()
-        .filter(|context| context.program_id == FARM_PROGRAM_ID)
-        .flat_map(|context| {
-            context
-                .log_messages
-                .iter()
-                .filter(|log| log.contains("process_admin_add_reward_token"))
-                .map(|_| context)
-                .collect::<Vec<&LogContext>>()
-        })
-        .collect::<Vec<&LogContext>>();
-    let reward_messages = process_new_reward_logs
-        .iter()
-        .flat_map(|context| {
-            context
-                .log_messages
-                .iter()
-                .filter(|log| log.contains("process_admin_add_reward_token"))
-        })
+        .filter(|log| log.contains("process_admin_add_reward_token"))
         .collect::<Vec<&String>>();
     if reward_messages.is_empty() {
         return Ok(None); // Early return with None
@@ -266,12 +237,11 @@ pub fn process_new_reward(
     // println(format!("user: {:?}, farm_id: {:?}", user, farm_id));
     // println(format!("accounts: {:?}", accounts));
 
-    let log_messages = &reward_messages;
     //"Program log: process_admin_add_reward_token: 6npFrUXvt7yniYerAwcBjg5SKspxN4tZbGFxEqMFEZHJ, 1740785220, 1741390020, 1, 0
 
     // // Finding the earliest start time
     let mut start_time: u32 = 0;
-    for message in log_messages {
+    for message in reward_messages {
         if let Some(split) = message.split("process_admin_add_reward_token: ").nth(1) {
             if let Some(temp_start_time) =
                 split.split(", ").nth(1).and_then(|s| s.parse::<u32>().ok())
@@ -287,7 +257,7 @@ pub fn process_new_reward(
 
     // // Finding the latest end time
     let mut end_time: u32 = 0;
-    for message in log_messages {
+    for message in reward_messages {
         if let Some(split) = message.split("process_admin_add_reward_token: ").nth(1) {
             if let Some(temp_end_time) =
                 split.split(", ").nth(2).and_then(|s| s.parse::<u32>().ok())

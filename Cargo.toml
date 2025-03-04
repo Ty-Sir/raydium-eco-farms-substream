@@ -11,7 +11,6 @@ crate-type = ["lib", "cdylib"]
 bs58 = "0.5.1"
 prost = "0.11"
 prost-types = "0.11"
-sologger_log_context = "0.2.2"
 substreams = "0.5.0"
 substreams-solana = "0.13.0"
 
